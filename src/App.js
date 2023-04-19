@@ -1,25 +1,38 @@
-import logo from "./logo.svg";
+import * as React from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
+import SignIn from "./Components/SignIn";
+import SignUp from "./Components/SignUp";
+import Home from "./Components/Home";
+import Asd from "./Components/Asd";
+import { getLog, setLog, setUser } from "./userReducer";
+import { useDispatch, useSelector } from "react-redux";
 
-function App() {
+export default function App() {
+  const dispatch = useDispatch();
+  React.useEffect(() => {
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      dispatch(setUser(JSON.parse(localStorage.getItem("userData"))));
+      dispatch(setLog(!!JSON.parse(localStorage.getItem("isLoggedIn"))));
+    }
+  }, []);
+  const [a, setA] = React.useState(1);
+  let isLoggedIn = useSelector(getLog);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edi <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Routes>
+      {isLoggedIn ? (
+        <>
+          <Route path="/" index element={<Home />} />
+          <Route path="/asd" element={<Asd />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </>
+      ) : (
+        <>
+          <Route path="/signin" element={<SignIn setA={setA} />} />
+          <Route path="/signup" element={<SignUp setA={setA} />} />
+          <Route path="*" element={<Navigate replace to="/signin" />} />
+        </>
+      )}
+    </Routes>
   );
 }
-
-export default App;
