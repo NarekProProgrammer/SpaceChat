@@ -14,8 +14,9 @@ import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { app } from "../firebase";
-import { getRem, setLog, setRem, setUser } from "../userReducer";
+import { getRem, getSnackbar, setLog, setRem, setSnackbar, setUser } from "../userReducer";
 import {useDispatch, useSelector} from "react-redux";
+import MySnackbar from "./mySnackbar.jsx";
 
 const theme = createTheme();
 
@@ -24,6 +25,7 @@ export default function SignIn(props) {
   const [password, setPassword] = React.useState("");
   const dispatch = useDispatch();
   const rememberMe = useSelector(getRem);
+  const snackbar = useSelector(getSnackbar);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -38,15 +40,28 @@ export default function SignIn(props) {
     localStorage.setItem("isLoggedIn", "true");
     }
     props.setA(a => a + 1);
+    dispatch(setSnackbar({
+      show: true,
+      message: "Signed in successfully!",
+      type: "success",
+    }));
   })
   .catch((error) => {
     const errorCode = error.code;
     switch(errorCode) {
       case "auth/wrong-password":
-        alert("Your password is incorrect. Please try again.");
+        dispatch(setSnackbar({
+      show: true,
+      message: "Your password is incorrect. Please try again!",
+      type: "error",
+    }));
         break;
       case "auth/user-not-found":
-        alert("Your email is invalid. Please try again.");
+        dispatch(setSnackbar({
+      show: true,
+      message: "Your email is invalid. Please try again!",
+      type: "error",
+    }));
         break;
       default:
     }
@@ -135,6 +150,7 @@ export default function SignIn(props) {
         </Box>
       </Container>
     </ThemeProvider>
+    {snackbar.show ? <MySnackbar message={snackbar.message} type={snackbar.type}/> : null}
     </div>
   );
 }

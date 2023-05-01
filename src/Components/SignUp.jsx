@@ -1,47 +1,99 @@
 import * as React from "react";
-import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
-import Link from "@mui/material/Link";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { app } from "../firebase";
+import { app, db, storage } from "../firebase";
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
-import { getRem, setLog, setRem, setUser } from "../userReducer";
+import { getRem, getSnackbar, setImgLink, setLog, setRem, setSnackbar, setUser } from "../userReducer";
 import { useDispatch, useSelector } from "react-redux";
+import { MuiFileInput } from 'mui-file-input'
+import {
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { doc, setDoc } from "firebase/firestore";
+import MySnackbar from "./mySnackbar.jsx";
 
 const theme = createTheme();
 
 export default function SignUp() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [file, setFile] = React.useState(null);
+  const [nickname, setNickname] = React.useState("");
   const dispatch = useDispatch();
   const rememberMe = useSelector(getRem);
+  const snackbar = useSelector(getSnackbar);
+
+  const changeFile = newFile => {
+    if(newFile && newFile.type.includes("image")) {
+      setFile(newFile);
+    }
+  }
+
+  function handleUpload() {
+    if (!file) {
+      alert("Please choose a file first!");
+    }
+
+    const storageRef = ref(storage, `/files/${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      () => {},
+      (err) => console.log(err),
+      () => { getDownloadURL(uploadTask.snapshot.ref).then((url) => {
+    dispatch(setImgLink(url));
+        });
+      }
+    );
+  }
+
+ async function setUserData(id) {
+        await setDoc(doc(db, "Users", id), {
+          email,
+          password,
+          nickname,
+        });
+      }
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    handleUpload();
     const auth = getAuth(app);
     createUserWithEmailAndPassword(auth, email, password)
   .then((userCredential) => {
     const user = userCredential.user;
+    setUserData(user.uid);
     dispatch(setUser(user));
     dispatch(setLog(true));
     if(rememberMe) {
       localStorage.setItem("userData", JSON.stringify(user));
     localStorage.setItem("isLoggedIn", "true");
     }
+    dispatch(setSnackbar({
+      show: true,
+      message: "Signed up successfully!",
+      type: "success",
+    }));
   })
   .catch((error) => {
     const errorCode = error.code;
     if(errorCode === "auth/email-already-in-use") {
-      alert("Email already in use.");
+      dispatch(setSnackbar({
+      show: true,
+      message: "Email already in use!",
+      type: "error",
+    }));
     }
   });
   };
@@ -69,27 +121,18 @@ export default function SignUp() {
             sx={{ mt: 3 }}
           >
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12}>
                 <TextField
                   variant="standard"
                   autoComplete="given-name"
-                  name="firstName"
+                  name="nickname"
                   required
                   fullWidth
-                  id="firstName"
-                  label="First Name"
+                  id="nickname"
+                  label="Nickname"
+                  value={nickname}
+                  onChange={e => setNickname(e.target.value)}
                   autoFocus
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  variant="standard"
-                  required
-                  fullWidth
-                  id="lastName"
-                  label="Last Name"
-                  name="lastName"
-                  autoComplete="family-name"
                 />
               </Grid>
               <Grid item xs={12}>
@@ -118,6 +161,9 @@ export default function SignUp() {
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="new-password"
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <MuiFileInput value={file} onChange={changeFile} accept="image/*"/>
               </Grid>
               <Grid item xs={12}>
                 <FormControlLabel
@@ -158,6 +204,7 @@ export default function SignUp() {
         </Box>
       </Container>
     </ThemeProvider>
+    {snackbar.show ? <MySnackbar message={snackbar.message} type={snackbar.type}/> : null}  
     </div>
   );
 }
