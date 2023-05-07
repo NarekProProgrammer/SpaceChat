@@ -1,25 +1,50 @@
-import logo from './logo.svg';
-import './App.css';
+import * as React from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import "./App.css";
+import SignIn from "./Components/SignIn";
+import SignUp from "./Components/SignUp";
+import Home from "./Components/Home";
+import Asd from "./Components/Asd";
+import { getLog, setLog, setUser } from "./userReducer";
+import { useDispatch, useSelector } from "react-redux";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-function App() {
+export default function App() {
+  const dispatch = useDispatch();
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const docRef = doc(db, "Users", user.uid);
+      const docSnap = await getDoc(docRef);
+      const userData = docSnap.data();
+      dispatch(setUser(userData));
+      dispatch(setLog(true));
+    } else {
+      dispatch(setLog(false));
+    }
+  });
+  function useForceUpdate() {
+    const [value, setValue] = React.useState(0);
+    return () => setValue((value) => value + 1);
+  }
+  const forceUpdate = useForceUpdate();
+  let isLoggedIn = useSelector(getLog);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Routes>
+      {isLoggedIn ? (
+        <>
+          <Route path="/" index element={<Home />} />
+          <Route path="/asd" element={<Asd />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </>
+      ) : (
+        <>
+          <Route path="/signin" element={<SignIn update={forceUpdate} />} />
+          <Route path="/signup" element={<SignUp update={forceUpdate} />} />
+          <Route path="*" element={<Navigate replace to="/signin" />} />
+        </>
+      )}
+    </Routes>
   );
 }
-
-export default App;
