@@ -7,16 +7,28 @@ import Home from "./Components/Home";
 import Asd from "./Components/Asd";
 import { getLog, setLog, setUser } from "./userReducer";
 import { useDispatch, useSelector } from "react-redux";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function App() {
   const dispatch = useDispatch();
-  React.useEffect(() => {
-    if (localStorage.getItem("isLoggedIn") === "true") {
-      dispatch(setUser(JSON.parse(localStorage.getItem("userData"))));
-      dispatch(setLog(!!JSON.parse(localStorage.getItem("isLoggedIn"))));
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const docRef = doc(db, "Users", user.uid);
+      const docSnap = await getDoc(docRef);
+      const userData = docSnap.data();
+      dispatch(setUser(userData));
+      dispatch(setLog(true));
+    } else {
+      dispatch(setLog(false));
     }
-  }, []);
-  const [a, setA] = React.useState(1);
+  });
+  function useForceUpdate() {
+    const [value, setValue] = React.useState(0);
+    return () => setValue((value) => value + 1);
+  }
+  const forceUpdate = useForceUpdate();
   let isLoggedIn = useSelector(getLog);
   return (
     <Routes>
@@ -28,8 +40,8 @@ export default function App() {
         </>
       ) : (
         <>
-          <Route path="/signin" element={<SignIn setA={setA} />} />
-          <Route path="/signup" element={<SignUp setA={setA} />} />
+          <Route path="/signin" element={<SignIn update={forceUpdate} />} />
+          <Route path="/signup" element={<SignUp update={forceUpdate} />} />
           <Route path="*" element={<Navigate replace to="/signin" />} />
         </>
       )}
